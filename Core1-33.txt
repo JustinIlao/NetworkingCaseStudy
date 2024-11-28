@@ -1,0 +1,311 @@
+﻿!
+! Last configuration change at 05:07:58 UTC Fri Nov 24 2023
+!
+version 16.12
+service timestamps debug datetime msec
+service timestamps log datetime msec
+! Call-home is enabled by Smart-Licensing.
+service call-home
+platform qfp utilization monitor load 80
+platform punt-keepalive disable-kernel-core
+!
+hostname Core1
+!
+boot-start-marker
+boot-end-marker
+!
+!
+vrf definition Mgmt-intf
+ !
+ address-family ipv4
+ exit-address-family
+ !
+ address-family ipv6
+ exit-address-family
+!
+!
+no aaa new-model
+call-home
+ ! If contact email address in call-home is configured as sch-smart-licensing@cisco.com
+ ! the email address configured in Cisco Smart License Portal will be used as contact email address to send SCH notifications.
+ contact-email-addr sch-smart-licensing@cisco.com
+ profile "CiscoTAC-1"
+  active
+  destination transport-method http
+  no destination transport-method email
+!
+!
+!
+!
+!
+!
+!
+no ip domain lookup
+!
+!
+!
+login on-success log
+ipv6 unicast-routing
+!
+!
+!
+!
+!
+!
+!
+subscriber templating
+! 
+! 
+! 
+! 
+!
+!
+multilink bundle-name authenticated
+!
+!
+!
+!
+!
+crypto pki trustpoint TP-self-signed-2048487135
+ enrollment selfsigned
+ subject-name cn=IOS-Self-Signed-Certificate-2048487135
+ revocation-check none
+ rsakeypair TP-self-signed-2048487135
+!
+crypto pki trustpoint SLA-TrustPoint
+ enrollment pkcs12
+ revocation-check crl
+!
+!
+crypto pki certificate chain TP-self-signed-2048487135
+ certificate self-signed 01
+crypto pki certificate chain SLA-TrustPoint
+ certificate ca 01
+!
+!
+no license feature hseck9
+license udi pid ISR4331/K9 sn FLM24220ACC
+license boot level appxk9
+license boot level uck9 disable
+license boot level securityk9
+memory free low-watermark processor 67065
+!
+diagnostic bootup level minimal
+!
+spanning-tree extend system-id
+!
+!
+redundancy
+ mode none
+!
+!
+!
+!
+!
+!
+!
+! 
+!
+!
+!
+!
+!
+!
+!
+!
+!
+!
+! 
+! 
+!
+!
+interface Loopback0
+ ip address 1.1.1.1 255.255.255.255
+ ipv6 address FC00:33:1::1/128
+ ospfv3 33 ipv4 area 0
+ ospfv3 33 ipv6 area 0
+!
+interface GigabitEthernet0/0/0
+ ip address 10.33.8.1 255.255.255.252
+ negotiation auto
+ ipv6 address FE80::1 link-local
+ ipv6 address 2001:DB8:33:9::1/64
+!
+interface GigabitEthernet0/0/1
+ ip address 10.33.4.65 255.255.255.252
+ negotiation auto
+ ipv6 address FE80::1 link-local
+ ipv6 address 2001:DB8:33:4::1/64
+!
+interface GigabitEthernet0/0/2
+ no ip address
+ negotiation auto
+!
+interface Serial0/1/0
+ bandwidth 64
+ ip address 10.33.8.9 255.255.255.252
+ ipv6 address FE80::1 link-local
+ ipv6 address 2001:DB8:33:11::1/64
+!
+interface Serial0/1/1
+ bandwidth 64
+ ip address 10.33.8.13 255.255.255.252
+ ipv6 address FE80::1 link-local
+ ipv6 address 2001:DB8:33:12::1/64
+!
+interface GigabitEthernet0
+ vrf forwarding Mgmt-intf
+ ip dhcp client client-id ascii FLM242611Y2
+ ip address dhcp
+ shutdown
+ negotiation auto
+!
+!
+router eigrp OntarioTech2023
+ !
+ address-family ipv4 unicast autonomous-system 333
+  !
+  af-interface default
+   authentication mode hmac-sha-256 Case$tudy23
+   hello-interval 1
+   hold-time 5
+  exit-af-interface
+  !
+  af-interface GigabitEthernet0/0/1
+   passive-interface
+  exit-af-interface
+  !
+  af-interface Loopback0
+   passive-interface
+  exit-af-interface
+  !
+  topology base
+   redistribute ospfv3 33 metric 1000000 100 255 1 1500 route-map filterEIGRP
+  exit-af-topology
+  network 1.1.1.1 0.0.0.0
+  network 10.33.4.65 0.0.0.0
+  network 10.33.8.1 0.0.0.0
+  network 10.33.8.9 0.0.0.0
+  network 10.33.8.13 0.0.0.0
+  eigrp router-id 33.1.1.1
+ exit-address-family
+ !
+ address-family ipv6 unicast autonomous-system 333
+  !
+  af-interface default
+   authentication mode hmac-sha-256 Case$tudy23
+   hello-interval 1
+   hold-time 5
+  exit-af-interface
+  !
+  af-interface GigabitEthernet0/0/1
+   passive-interface
+  exit-af-interface
+  !
+  af-interface Loopback0
+   passive-interface
+  exit-af-interface
+  !
+  topology base
+   redistribute ospf 33 metric 1000000 100 255 1 1500 route-map filterOSPF_IPV6 include-connected
+  exit-af-topology
+  eigrp router-id 33.1.1.1
+ exit-address-family
+!
+router ospfv3 33
+ auto-cost reference-bandwidth 20000
+ !
+ address-family ipv4 unicast
+  summary-prefix 10.33.0.0/21
+  redistribute eigrp 333 route-map filterOSPF
+  passive-interface Loopback0
+  default-information originate
+  router-id 33.1.1.1
+ exit-address-family
+ !
+ address-family ipv6 unicast
+  passive-interface Loopback0
+  default-information originate
+  summary-prefix 2001:DB8:33::/61
+  redistribute eigrp 333 route-map filterOSPF_IPV6 include-connected
+  router-id 33.1.1.1
+ exit-address-family
+!
+ip local policy route-map PBR_LO0
+ip forward-protocol nd
+ip http server
+ip http authentication local
+ip http secure-server
+ip http client source-interface GigabitEthernet0
+!
+!
+!
+ip access-list standard 1
+ 10 permit 1.1.1.1
+ip access-list standard 5
+ 10 permit 5.5.5.5
+ 15 permit 6.6.6.6
+ 20 permit 7.7.7.7
+ 30 permit 8.8.8.8
+ 35 permit 1.1.1.1
+ 40 permit 2.2.2.2
+ 45 permit 3.3.3.3
+ 50 permit 4.4.4.4
+ip access-list standard 10
+ 10 permit 5.5.5.5
+ 15 permit 6.6.6.6
+ 20 permit 7.7.7.7
+ 30 permit 8.8.8.8
+!
+!
+route-map filterOSPF deny 5 
+ match ip address 5
+!
+route-map filterOSPF permit 10 
+!
+route-map PBR_LO0 permit 10 
+ match ip address 1
+ set ip default next-hop 10.33.8.10
+!
+route-map filterOSPF_IPV6 deny 10 
+ match ipv6 address ipv6F
+!
+route-map filterOSPF_IPV6 permit 15 
+!
+route-map filterEIGRP deny 10 
+ match ip address 10
+!
+route-map filterEIGRP permit 15 
+!
+!
+!
+!
+ipv6 access-list ipv6F
+ sequence 10 permit ipv6 host FC00:33:5::5 any
+ sequence 11 permit ipv6 host FC00:33:1::1 any
+ sequence 12 permit ipv6 host FC00:33:2::2 any
+ sequence 13 permit ipv6 host FC00:33:3::3 any
+ sequence 14 permit ipv6 host FC00:33:4::4 any
+ sequence 20 permit ipv6 host FC00:33:6::6 any
+ sequence 30 permit ipv6 host FC00:33:7::7 any
+ sequence 40 permit ipv6 host FC00:33:8::8 any
+!
+control-plane
+!
+!
+line con 0
+ exec-timeout 0 0
+ logging synchronous
+ stopbits 1
+line aux 0
+ stopbits 1
+line vty 0 4
+ login
+!
+!
+!
+!
+!
+!
+end
+
